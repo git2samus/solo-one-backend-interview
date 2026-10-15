@@ -5,10 +5,10 @@ from fastapi import APIRouter, Query
 
 import schemas
 
-router = APIRouter()
+router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-@router.post("/tasks/", response_model=schemas.Task, status_code=201)
+@router.post("/", response_model=schemas.Task, status_code=201)
 async def create_task(task: schemas.TaskCreate):
     """
     Create a new task that is due at a specific meeting.
@@ -24,7 +24,7 @@ async def create_task(task: schemas.TaskCreate):
     )
 
 
-@router.get("/tasks/", response_model=List[schemas.Task])
+@router.get("/", response_model=List[schemas.Task])
 async def list_tasks(meeting_id: Optional[int] = Query(None), status: Optional[str] = Query(None)):
     """
     List all tasks, optionally filtered by meeting_id or status.
@@ -33,7 +33,7 @@ async def list_tasks(meeting_id: Optional[int] = Query(None), status: Optional[s
     return []
 
 
-@router.get("/tasks/{task_id}", response_model=schemas.Task)
+@router.get("/{task_id}", response_model=schemas.Task)
 async def get_task(task_id: int):
     """
     Get a specific task by ID.
@@ -49,7 +49,7 @@ async def get_task(task_id: int):
     )
 
 
-@router.put("/tasks/{task_id}", response_model=schemas.Task)
+@router.put("/{task_id}", response_model=schemas.Task)
 async def update_task(task_id: int, task: schemas.TaskUpdate):
     """
     Update a task (e.g., change status, reassign to different meeting).
@@ -65,7 +65,7 @@ async def update_task(task_id: int, task: schemas.TaskUpdate):
     )
 
 
-@router.delete("/tasks/{task_id}", status_code=204)
+@router.delete("/{task_id}", status_code=204)
 async def delete_task(task_id: int):
     """
     Delete a task.

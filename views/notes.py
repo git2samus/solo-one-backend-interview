@@ -5,10 +5,10 @@ from fastapi import APIRouter, Query
 
 import schemas
 
-router = APIRouter()
+router = APIRouter(prefix="/notes", tags=["notes"])
 
 
-@router.post("/notes/", response_model=schemas.Note, status_code=201)
+@router.post("/", response_model=schemas.Note, status_code=201)
 async def create_note(note: schemas.NoteCreate):
     """
     Create a new note for a meeting.
@@ -22,7 +22,7 @@ async def create_note(note: schemas.NoteCreate):
     )
 
 
-@router.get("/notes/", response_model=List[schemas.Note])
+@router.get("/", response_model=List[schemas.Note])
 async def list_notes(meeting_id: Optional[int] = Query(None)):
     """
     List all notes, optionally filtered by meeting_id.
@@ -31,7 +31,7 @@ async def list_notes(meeting_id: Optional[int] = Query(None)):
     return []
 
 
-@router.get("/notes/{note_id}", response_model=schemas.Note)
+@router.get("/{note_id}", response_model=schemas.Note)
 async def get_note(note_id: int):
     """
     Get a specific note by ID.

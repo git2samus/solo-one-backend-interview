@@ -2,6 +2,7 @@ from typing import List, Set
 
 import models
 import schemas
+from cache import cached
 from services.base import BaseService, ConflictError, NotFoundError
 
 
@@ -19,6 +20,7 @@ class UserService(BaseService):
         user = self._save(models.User(**data.model_dump()))
         return schemas.User.model_validate(user)
 
+    @cached
     def list(self) -> List[schemas.User]:
         users = (
             self.db.query(models.User)
@@ -27,6 +29,7 @@ class UserService(BaseService):
         )
         return [schemas.User.model_validate(user) for user in users]
 
+    @cached
     def get(self, user_id: int) -> schemas.User:
         if user_id not in self._visible_ids():
             raise NotFoundError("User", user_id)

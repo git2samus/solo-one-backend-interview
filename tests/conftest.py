@@ -7,9 +7,20 @@ from sqlalchemy.pool import StaticPool
 from database import get_db
 from main import app
 import models
-from mesh import build_local_mesh
+from mesh import build_local_mesh, default_cache
 from middleware import USER_ID_HEADER
 from models import Base
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """
+    Every test gets a fresh database, so cached results from earlier tests
+    (keyed by the same ids) must not leak into it.
+    """
+    default_cache.clear()
+    yield
+    default_cache.clear()
 
 
 @pytest.fixture

@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, FrozenSet, List, Optional, Set, Tuple
 
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import models
+from cache import CacheBackend, InMemoryCache, cache_policy
 from database import get_db
 from middleware import get_current_user_id
 from services import SERVICE_CLASSES, BaseService
@@ -35,6 +36,59 @@ class LocalTransport(Transport):
         if service not in self._services:
             raise AttributeError(f"Unknown service: {service}")
         return getattr(self._services[service], method)(*args, **kwargs)
+
+
+class CachingTransport(Transport):
+    """
+    Wraps another transport, caching reads per user and invalidating on writes.
+
+    Reads are the methods marked with @cached; every other call is a write,
+    which invalidates the cached entries (of all users) that read the written
+    service. Mesh calls made while computing a read are recorded as
+    dependencies of that read.
+    """
+
+    def __init__(
+        self,
+        inner: Transport,
+        cache: CacheBackend,
+        user_id: Optional[int],
+        policy: Dict[Tuple[str, str], FrozenSet[str]],
+    ):
+        self._inner = inner
+        self._cache = cache
+        self._user_id = user_id
+        self._policy = policy
+        self._reads_in_progress: List[Set[str]] = []
+
+    def call(self, service: str, method: str, *args: Any, **kwargs: Any) -> Any:
+        tags = self._policy.get((service, method))
+        if tags is None:
+            try:
+                return self._inner.call(service, method, *args, **kwargs)
+            finally:
+                self._cache.invalidate({service})
+
+        key = (self._user_id, service, method, args, tuple(sorted(kwargs.items())))
+        entry = self._cache.get(key)
+        if entry is not None:
+            value, tags = entry
+            self._record_dependencies(tags)
+            return value
+
+        version = self._cache.version()
+        self._reads_in_progress.append(set(tags))
+        try:
+            value = self._inner.call(service, method, *args, **kwargs)
+        finally:
+            tags = frozenset(self._reads_in_progress.pop())
+        self._cache.set(key, value, tags, version)
+        self._record_dependencies(tags)
+        return value
+
+    def _record_dependencies(self, tags: FrozenSet[str]) -> None:
+        if self._reads_in_progress:
+            self._reads_in_progress[-1].update(tags)
 
 
 class ServiceProxy:
@@ -79,13 +133,27 @@ class ServiceMesh:
         return ServiceProxy(self._transport, service)
 
 
-def build_local_mesh(db: Session, user_id: Optional[int]) -> ServiceMesh:
+CACHE_POLICY = cache_policy(SERVICE_CLASSES)
+
+default_cache = InMemoryCache()
+
+
+def build_local_mesh(
+    db: Session,
+    user_id: Optional[int],
+    cache: Optional[CacheBackend] = default_cache,
+) -> ServiceMesh:
     """
     Build a mesh whose services run in-process against the given DB session.
+
+    Pass cache=None to disable caching.
     """
     mesh = ServiceMesh(user_id)
     services = {cls.name: cls(db=db, user_id=user_id, mesh=mesh) for cls in SERVICE_CLASSES}
-    mesh.connect(LocalTransport(services))
+    transport: Transport = LocalTransport(services)
+    if cache is not None:
+        transport = CachingTransport(transport, cache, user_id, CACHE_POLICY)
+    mesh.connect(transport)
     return mesh
 
 

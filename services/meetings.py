@@ -5,6 +5,7 @@ from sqlalchemy.orm import Query
 
 import models
 import schemas
+from cache import cached
 from services.base import BaseService, ConflictError, ForbiddenError, NotFoundError
 
 
@@ -20,13 +21,16 @@ class MeetingService(BaseService):
         meeting.attendees = self._load_attendees(data.attendee_ids)
         return schemas.Meeting.model_validate(self._save(meeting))
 
+    @cached(reads=("users",))
     def list(self) -> List[schemas.Meeting]:
         meetings = self._accessible().order_by(models.Meeting.id)
         return [schemas.Meeting.model_validate(meeting) for meeting in meetings]
 
+    @cached(reads=("users", "notes", "tasks"))
     def get(self, meeting_id: int) -> schemas.MeetingWithDetails:
         return schemas.MeetingWithDetails.model_validate(self._get_meeting(meeting_id))
 
+    @cached
     def accessible_ids(self) -> List[int]:
         return [meeting_id for (meeting_id,) in self._accessible().with_entities(models.Meeting.id)]
 

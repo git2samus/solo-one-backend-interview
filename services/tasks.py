@@ -2,6 +2,7 @@ from typing import List, Optional
 
 import models
 import schemas
+from cache import cached
 from services.base import BaseService, NotFoundError
 
 
@@ -17,6 +18,7 @@ class TaskService(BaseService):
         task = self._save(models.Task(**data.model_dump()))
         return schemas.Task.model_validate(task)
 
+    @cached
     def list(self, meeting_id: Optional[int] = None, status: Optional[str] = None) -> List[schemas.Task]:
         query = self.db.query(models.Task).filter(
             models.Task.due_meeting_id.in_(self.mesh.meetings.accessible_ids())
@@ -27,6 +29,7 @@ class TaskService(BaseService):
             query = query.filter(models.Task.status == status)
         return [schemas.Task.model_validate(task) for task in query.order_by(models.Task.id)]
 
+    @cached
     def get(self, task_id: int) -> schemas.Task:
         return schemas.Task.model_validate(self._get_task(task_id))
 

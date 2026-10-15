@@ -2,7 +2,8 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from middleware import USER_ID_HEADER, UserIdMiddleware, get_current_user_id
+from middleware import UserIdMiddleware, get_current_user_id
+from settings import settings
 
 PROTECTED_ENDPOINTS = [
     ("get", "/users/"),
@@ -28,15 +29,15 @@ def test_missing_header_returns_401(client, method, path):
     response = client.request(method, path)
 
     assert response.status_code == 401
-    assert response.json() == {"detail": f"Missing {USER_ID_HEADER} header"}
+    assert response.json() == {"detail": f"Missing {settings.user_id_header} header"}
 
 
 @pytest.mark.parametrize("value", ["abc", "1.5", ""])
 def test_non_integer_header_returns_400(client, value):
-    response = client.get("/users/", headers={USER_ID_HEADER: value})
+    response = client.get("/users/", headers={settings.user_id_header: value})
 
     assert response.status_code == 400
-    assert response.json() == {"detail": f"{USER_ID_HEADER} header must be an integer"}
+    assert response.json() == {"detail": f"{settings.user_id_header} header must be an integer"}
 
 
 @pytest.mark.parametrize("path", ["/users/", "/meetings/", "/notes/", "/tasks/"])
@@ -45,7 +46,7 @@ def test_valid_header_is_accepted(client, auth_headers, path):
 
 
 def test_unknown_user_returns_401(client):
-    response = client.get("/meetings/", headers={USER_ID_HEADER: "999"})
+    response = client.get("/meetings/", headers={settings.user_id_header: "999"})
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Unknown user 999"}
@@ -65,7 +66,7 @@ def test_user_id_is_passed_to_view():
     async def whoami(current_user_id: int = Depends(get_current_user_id)):
         return {"user_id": current_user_id}
 
-    response = TestClient(app).get("/whoami", headers={USER_ID_HEADER: "42"})
+    response = TestClient(app).get("/whoami", headers={settings.user_id_header: "42"})
 
     assert response.status_code == 200
     assert response.json() == {"user_id": 42}

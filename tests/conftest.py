@@ -6,7 +6,7 @@ from database import create_db_engine, get_db
 from main import app
 import models
 from mesh import build_local_mesh, default_cache
-from middleware import USER_ID_HEADER
+from settings import settings
 from models import Base
 
 
@@ -60,7 +60,7 @@ def create_user(client):
         response = client.post("/users/", json={"name": name, "email": email})
         assert response.status_code == 201
         user = response.json()
-        return user, {USER_ID_HEADER: str(user["id"])}
+        return user, {settings.user_id_header: str(user["id"])}
 
     return create
 

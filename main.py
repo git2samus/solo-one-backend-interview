@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from database import create_tables
 from middleware import UserIdMiddleware
 from services import ConflictError, ForbiddenError, NotFoundError
+from settings import settings
 from views import meetings, notes, tasks, users
 
 
@@ -16,9 +17,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Meeting Notes API",
-    description="API for managing meetings, notes, and tasks",
-    version="1.0.0",
+    title=settings.app_title,
+    description=settings.app_description,
+    version=settings.app_version,
     lifespan=lifespan,
 )
 
@@ -51,8 +52,8 @@ async def root():
     Root endpoint to verify the API is running.
     """
     return {
-        "message": "Welcome to the Meeting Notes API",
-        "version": "1.0.0",
+        "message": f"Welcome to the {settings.app_title}",
+        "version": settings.app_version,
         "endpoints": {
             "users": "/users/",
             "meetings": "/meetings/",

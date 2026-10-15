@@ -1,35 +1,15 @@
-import pytest
 from sqlalchemy.orm import sessionmaker
 
 import models
-from database import create_db_engine, get_backend
+from database import create_db_engine
 from models import Base
+from settings import settings
 
 
-def test_backend_defaults_to_sqlite(monkeypatch):
-    monkeypatch.delenv("MESH_BACKEND", raising=False)
-
-    assert get_backend() == "sqlite"
-
-
-@pytest.mark.parametrize("backend", ["sqlite", "memory"])
-def test_backend_is_read_from_environment(monkeypatch, backend):
-    monkeypatch.setenv("MESH_BACKEND", backend)
-
-    assert get_backend() == backend
-
-
-def test_unknown_backend_is_rejected(monkeypatch):
-    monkeypatch.setenv("MESH_BACKEND", "postgres")
-
-    with pytest.raises(ValueError, match="postgres"):
-        get_backend()
-
-
-def test_sqlite_backend_uses_meetings_db_file():
+def test_sqlite_backend_uses_configured_file():
     engine = create_db_engine("sqlite")
 
-    assert engine.url.database == "./meetings.db"
+    assert str(engine.url) == settings.sqlite_database_url
     engine.dispose()
 
 

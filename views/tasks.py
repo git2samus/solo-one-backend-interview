@@ -1,15 +1,16 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 import schemas
+from middleware import get_current_user_id
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
 @router.post("/", response_model=schemas.Task, status_code=201)
-async def create_task(task: schemas.TaskCreate):
+async def create_task(task: schemas.TaskCreate, current_user_id: int = Depends(get_current_user_id)):
     """
     Create a new task that is due at a specific meeting.
     """
@@ -25,7 +26,7 @@ async def create_task(task: schemas.TaskCreate):
 
 
 @router.get("/", response_model=List[schemas.Task])
-async def list_tasks(meeting_id: Optional[int] = Query(None), status: Optional[str] = Query(None)):
+async def list_tasks(meeting_id: Optional[int] = Query(None), status: Optional[str] = Query(None), current_user_id: int = Depends(get_current_user_id)):
     """
     List all tasks, optionally filtered by meeting_id or status.
     """
@@ -34,7 +35,7 @@ async def list_tasks(meeting_id: Optional[int] = Query(None), status: Optional[s
 
 
 @router.get("/{task_id}", response_model=schemas.Task)
-async def get_task(task_id: int):
+async def get_task(task_id: int, current_user_id: int = Depends(get_current_user_id)):
     """
     Get a specific task by ID.
     """
@@ -50,7 +51,7 @@ async def get_task(task_id: int):
 
 
 @router.put("/{task_id}", response_model=schemas.Task)
-async def update_task(task_id: int, task: schemas.TaskUpdate):
+async def update_task(task_id: int, task: schemas.TaskUpdate, current_user_id: int = Depends(get_current_user_id)):
     """
     Update a task (e.g., change status, reassign to different meeting).
     """
@@ -66,7 +67,7 @@ async def update_task(task_id: int, task: schemas.TaskUpdate):
 
 
 @router.delete("/{task_id}", status_code=204)
-async def delete_task(task_id: int):
+async def delete_task(task_id: int, current_user_id: int = Depends(get_current_user_id)):
     """
     Delete a task.
     """

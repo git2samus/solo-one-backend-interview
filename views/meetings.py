@@ -1,15 +1,16 @@
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 import schemas
+from middleware import get_current_user_id
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
 @router.post("/", response_model=schemas.Meeting, status_code=201)
-async def create_meeting(meeting: schemas.MeetingCreate):
+async def create_meeting(meeting: schemas.MeetingCreate, current_user_id: int = Depends(get_current_user_id)):
     """
     Create a new meeting with attendees.
     """
@@ -25,7 +26,7 @@ async def create_meeting(meeting: schemas.MeetingCreate):
 
 
 @router.get("/", response_model=List[schemas.Meeting])
-async def list_meetings():
+async def list_meetings(current_user_id: int = Depends(get_current_user_id)):
     """
     List all meetings.
     """
@@ -34,7 +35,7 @@ async def list_meetings():
 
 
 @router.get("/{meeting_id}", response_model=schemas.MeetingWithDetails)
-async def get_meeting(meeting_id: int):
+async def get_meeting(meeting_id: int, current_user_id: int = Depends(get_current_user_id)):
     """
     Get a specific meeting with all details (attendees, notes, tasks).
     """
@@ -52,7 +53,7 @@ async def get_meeting(meeting_id: int):
 
 
 @router.put("/{meeting_id}", response_model=schemas.Meeting)
-async def update_meeting(meeting_id: int, meeting: schemas.MeetingUpdate):
+async def update_meeting(meeting_id: int, meeting: schemas.MeetingUpdate, current_user_id: int = Depends(get_current_user_id)):
     """
     Update a meeting.
     """
@@ -68,7 +69,7 @@ async def update_meeting(meeting_id: int, meeting: schemas.MeetingUpdate):
 
 
 @router.delete("/{meeting_id}", status_code=204)
-async def delete_meeting(meeting_id: int):
+async def delete_meeting(meeting_id: int, current_user_id: int = Depends(get_current_user_id)):
     """
     Delete a meeting.
     """

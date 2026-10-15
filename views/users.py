@@ -1,14 +1,15 @@
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 import schemas
+from middleware import get_current_user_id
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/", response_model=schemas.User, status_code=201)
-async def create_user(user: schemas.UserCreate):
+async def create_user(user: schemas.UserCreate, current_user_id: int = Depends(get_current_user_id)):
     """
     Create a new user.
     """
@@ -17,7 +18,7 @@ async def create_user(user: schemas.UserCreate):
 
 
 @router.get("/", response_model=List[schemas.User])
-async def list_users():
+async def list_users(current_user_id: int = Depends(get_current_user_id)):
     """
     List all users.
     """
@@ -26,7 +27,7 @@ async def list_users():
 
 
 @router.get("/{user_id}", response_model=schemas.User)
-async def get_user(user_id: int):
+async def get_user(user_id: int, current_user_id: int = Depends(get_current_user_id)):
     """
     Get a specific user by ID.
     """

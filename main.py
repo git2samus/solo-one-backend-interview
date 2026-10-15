@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from middleware import UserIdMiddleware
 from views import meetings, notes, tasks, users
 
 app = FastAPI(
@@ -7,6 +8,8 @@ app = FastAPI(
     description="API for managing meetings, notes, and tasks",
     version="1.0.0"
 )
+
+app.add_middleware(UserIdMiddleware)
 
 app.include_router(users.router)
 app.include_router(meetings.router)

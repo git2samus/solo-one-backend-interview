@@ -1,10 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from database import get_db
+from database import create_db_engine, get_db
 from main import app
 import models
 from mesh import build_local_mesh, default_cache
@@ -25,9 +23,7 @@ def clear_cache():
 
 @pytest.fixture
 def session_factory():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
+    engine = create_db_engine("memory")
     Base.metadata.create_all(bind=engine)
     yield sessionmaker(autocommit=False, autoflush=False, bind=engine)
     engine.dispose()

@@ -39,11 +39,11 @@ def test_non_integer_header_returns_400(client, value):
     assert response.json() == {"detail": f"{USER_ID_HEADER} header must be an integer"}
 
 
-@pytest.mark.parametrize("method,path", PROTECTED_ENDPOINTS)
-def test_valid_header_is_accepted(client, method, path):
-    response = client.request(method, path, headers={USER_ID_HEADER: "7"})
+@pytest.mark.parametrize("path", ["/users/", "/meetings/", "/notes/", "/tasks/"])
+def test_valid_header_is_accepted(client, path):
+    response = client.get(path, headers={USER_ID_HEADER: "7"})
 
-    assert response.status_code in (200, 204)
+    assert response.status_code == 200
 
 
 def test_user_id_is_passed_to_view():

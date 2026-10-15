@@ -3,33 +3,30 @@ from typing import List
 from fastapi import APIRouter, Depends
 
 import schemas
-from middleware import get_current_user_id
+from mesh import ServiceMesh, get_mesh
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/", response_model=schemas.User, status_code=201)
-async def create_user(user: schemas.UserCreate, current_user_id: int = Depends(get_current_user_id)):
+def create_user(user: schemas.UserCreate, mesh: ServiceMesh = Depends(get_mesh)):
     """
     Create a new user.
     """
-    # Stub: Return a mock user
-    return schemas.User(id=1, name=user.name, email=user.email)
+    return mesh.users.create(user)
 
 
 @router.get("/", response_model=List[schemas.User])
-async def list_users(current_user_id: int = Depends(get_current_user_id)):
+def list_users(mesh: ServiceMesh = Depends(get_mesh)):
     """
     List all users.
     """
-    # Stub: Return empty list
-    return []
+    return mesh.users.list()
 
 
 @router.get("/{user_id}", response_model=schemas.User)
-async def get_user(user_id: int, current_user_id: int = Depends(get_current_user_id)):
+def get_user(user_id: int, mesh: ServiceMesh = Depends(get_mesh)):
     """
     Get a specific user by ID.
     """
-    # Stub: Return a mock user
-    return schemas.User(id=user_id, name="John Doe", email="john@example.com")
+    return mesh.users.get(user_id)

@@ -1,46 +1,32 @@
-from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
 import schemas
-from middleware import get_current_user_id
+from mesh import ServiceMesh, get_mesh
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
 
 @router.post("/", response_model=schemas.Note, status_code=201)
-async def create_note(note: schemas.NoteCreate, current_user_id: int = Depends(get_current_user_id)):
+def create_note(note: schemas.NoteCreate, mesh: ServiceMesh = Depends(get_mesh)):
     """
     Create a new note for a meeting.
     """
-    # Stub: Return a mock note
-    return schemas.Note(
-        id=1,
-        content=note.content,
-        meeting_id=note.meeting_id,
-        created_at=datetime.utcnow()
-    )
+    return mesh.notes.create(note)
 
 
 @router.get("/", response_model=List[schemas.Note])
-async def list_notes(meeting_id: Optional[int] = Query(None), current_user_id: int = Depends(get_current_user_id)):
+def list_notes(meeting_id: Optional[int] = Query(None), mesh: ServiceMesh = Depends(get_mesh)):
     """
     List all notes, optionally filtered by meeting_id.
     """
-    # Stub: Return empty list
-    return []
+    return mesh.notes.list(meeting_id=meeting_id)
 
 
 @router.get("/{note_id}", response_model=schemas.Note)
-async def get_note(note_id: int, current_user_id: int = Depends(get_current_user_id)):
+def get_note(note_id: int, mesh: ServiceMesh = Depends(get_mesh)):
     """
     Get a specific note by ID.
     """
-    # Stub: Return a mock note
-    return schemas.Note(
-        id=note_id,
-        content="Sample note content",
-        meeting_id=1,
-        created_at=datetime.utcnow()
-    )
+    return mesh.notes.get(note_id)

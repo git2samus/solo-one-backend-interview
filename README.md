@@ -37,6 +37,19 @@ uvicorn main:app --reload
 
 The API will be available at `http://localhost:8000`
 
+## Running Tests
+
+Tests live in `tests/` and use pytest with FastAPI's `TestClient`, so no running server is needed. After installing dependencies, run from the project root:
+```bash
+pytest
+```
+
+To run a single file or test:
+```bash
+pytest tests/test_middleware.py
+pytest tests/test_middleware.py::test_user_id_is_passed_to_view
+```
+
 ## API Documentation
 
 Once the server is running, you can access:

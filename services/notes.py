@@ -4,8 +4,10 @@ import models
 import schemas
 from cache import cached
 from services.base import BaseService, NotFoundError
+from tools import expose_tools
 
 
+@expose_tools
 class NoteService(BaseService):
     """
     A user can access notes on meetings they can access.
@@ -14,12 +16,18 @@ class NoteService(BaseService):
     name = "notes"
 
     def create(self, data: schemas.NoteCreate) -> schemas.Note:
+        """
+        Add a note to a meeting the current user owns or attends.
+        """
         self.mesh.meetings.get(data.meeting_id)
         note = self._save(models.Note(**data.model_dump()))
         return schemas.Note.model_validate(note)
 
     @cached
     def list(self, meeting_id: Optional[int] = None) -> List[schemas.Note]:
+        """
+        List notes on meetings the current user owns or attends, optionally only those of one meeting.
+        """
         query = self.db.query(models.Note).filter(
             models.Note.meeting_id.in_(self.mesh.meetings.accessible_ids())
         )
@@ -29,6 +37,9 @@ class NoteService(BaseService):
 
     @cached
     def get(self, note_id: int) -> schemas.Note:
+        """
+        Get a note by ID, if it belongs to a meeting the current user owns or attends.
+        """
         note = self.db.get(models.Note, note_id)
         if note is None or note.meeting_id not in self.mesh.meetings.accessible_ids():
             raise NotFoundError("Note", note_id)

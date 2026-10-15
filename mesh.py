@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, FrozenSet, List, Optional, Set, Tuple
 
 from fastapi import Depends, HTTPException
+from pydantic_core import to_jsonable_python
 from sqlalchemy.orm import Session
 
 import models
@@ -9,6 +10,7 @@ from cache import CacheBackend, InMemoryCache, cache_policy
 from database import get_db
 from middleware import get_current_user_id
 from services import SERVICE_CLASSES, BaseService
+from tools import Tool, collect_tools
 
 
 class Transport(ABC):
@@ -118,12 +120,35 @@ class ServiceMesh:
     that need no user (e.g. creating a user).
     """
 
-    def __init__(self, user_id: Optional[int], transport: Optional[Transport] = None):
+    def __init__(
+        self,
+        user_id: Optional[int],
+        transport: Optional[Transport] = None,
+        tools: Optional[Dict[str, Tool]] = None,
+    ):
         self.user_id = user_id
         self._transport = transport
+        self._tools = tools or {}
 
     def connect(self, transport: Transport) -> None:
         self._transport = transport
+
+    def get_tools(self) -> List[Dict[str, Any]]:
+        """
+        Definitions of the services' tools, ready to pass to an LLM.
+        """
+        return [tool.definition() for tool in self._tools.values()]
+
+    def call_tool(self, name: str, tool_input: Dict[str, Any]) -> Any:
+        """
+        Run a tool call requested by an LLM through this mesh, so it is scoped
+        to this mesh's user; returns a JSON-compatible result.
+        """
+        if name not in self._tools:
+            raise KeyError(f"Unknown tool: {name}")
+        tool = self._tools[name]
+        result = getattr(getattr(self, tool.service), tool.method)(**tool.arguments(tool_input))
+        return to_jsonable_python(result)
 
     def __getattr__(self, service: str) -> ServiceProxy:
         if service.startswith("_"):
@@ -134,6 +159,8 @@ class ServiceMesh:
 
 
 CACHE_POLICY = cache_policy(SERVICE_CLASSES)
+
+TOOLS = collect_tools(SERVICE_CLASSES)
 
 default_cache = InMemoryCache()
 
@@ -148,7 +175,7 @@ def build_local_mesh(
 
     Pass cache=None to disable caching.
     """
-    mesh = ServiceMesh(user_id)
+    mesh = ServiceMesh(user_id, tools=TOOLS)
     services = {cls.name: cls(db=db, user_id=user_id, mesh=mesh) for cls in SERVICE_CLASSES}
     transport: Transport = LocalTransport(services)
     if cache is not None:

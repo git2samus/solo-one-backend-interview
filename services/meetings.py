@@ -7,8 +7,10 @@ import models
 import schemas
 from cache import cached
 from services.base import BaseService, ConflictError, ForbiddenError, NotFoundError
+from tools import expose_tools
 
 
+@expose_tools
 class MeetingService(BaseService):
     """
     A user can access meetings they own or attend; only the owner can delete.
@@ -17,17 +19,26 @@ class MeetingService(BaseService):
     name = "meetings"
 
     def create(self, data: schemas.MeetingCreate) -> schemas.Meeting:
+        """
+        Schedule a new meeting owned by the current user. attendee_ids lists the IDs of existing users to invite.
+        """
         meeting = models.Meeting(**data.model_dump(exclude={"attendee_ids"}), owner_id=self.user_id)
         meeting.attendees = self._load_attendees(data.attendee_ids)
         return schemas.Meeting.model_validate(self._save(meeting))
 
     @cached(reads=("users",))
     def list(self) -> List[schemas.Meeting]:
+        """
+        List the meetings the current user owns or attends, with their attendees.
+        """
         meetings = self._accessible().order_by(models.Meeting.id)
         return [schemas.Meeting.model_validate(meeting) for meeting in meetings]
 
     @cached(reads=("users", "notes", "tasks"))
     def get(self, meeting_id: int) -> schemas.MeetingWithDetails:
+        """
+        Get a meeting the current user owns or attends, with its attendees, notes and tasks.
+        """
         return schemas.MeetingWithDetails.model_validate(self._get_meeting(meeting_id))
 
     @cached
@@ -35,6 +46,9 @@ class MeetingService(BaseService):
         return [meeting_id for (meeting_id,) in self._accessible().with_entities(models.Meeting.id)]
 
     def update(self, meeting_id: int, data: schemas.MeetingUpdate) -> schemas.Meeting:
+        """
+        Update a meeting the current user owns or attends. Only the fields provided are changed; attendee_ids replaces the full attendee list.
+        """
         meeting = self._get_meeting(meeting_id)
         changes = data.model_dump(exclude_unset=True)
         attendee_ids = changes.pop("attendee_ids", None)
@@ -45,6 +59,9 @@ class MeetingService(BaseService):
         return schemas.Meeting.model_validate(self._save(meeting))
 
     def delete(self, meeting_id: int) -> None:
+        """
+        Delete a meeting and its notes. Only the meeting's owner can delete it, and only once it has no tasks due.
+        """
         meeting = self._get_meeting(meeting_id)
         if meeting.owner_id != self.user_id:
             raise ForbiddenError(f"Only the owner can delete meeting {meeting_id}")

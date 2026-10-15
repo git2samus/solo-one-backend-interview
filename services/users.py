@@ -4,8 +4,10 @@ import models
 import schemas
 from cache import cached
 from services.base import BaseService, ConflictError, NotFoundError
+from tools import expose_tools
 
 
+@expose_tools
 class UserService(BaseService):
     """
     A user can see themselves and anyone they share a meeting with.
@@ -14,6 +16,9 @@ class UserService(BaseService):
     name = "users"
 
     def create(self, data: schemas.UserCreate) -> schemas.User:
+        """
+        Create a new user with a name and a unique email address.
+        """
         existing = self.db.query(models.User).filter(models.User.email == data.email).first()
         if existing is not None:
             raise ConflictError(f"User with email {data.email} already exists")
@@ -22,6 +27,9 @@ class UserService(BaseService):
 
     @cached
     def list(self) -> List[schemas.User]:
+        """
+        List the current user and every user who shares a meeting with them (as owner or attendee).
+        """
         users = (
             self.db.query(models.User)
             .filter(models.User.id.in_(self._visible_ids()))
@@ -31,6 +39,9 @@ class UserService(BaseService):
 
     @cached
     def get(self, user_id: int) -> schemas.User:
+        """
+        Get a user by ID. Only the current user and users who share a meeting with them can be found.
+        """
         if user_id not in self._visible_ids():
             raise NotFoundError("User", user_id)
         return schemas.User.model_validate(self._get_model(models.User, user_id))

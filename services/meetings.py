@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy import or_
+from sqlalchemy import delete, insert, or_, select
 from sqlalchemy.orm import Query
 
 import models
@@ -22,8 +22,11 @@ class MeetingService(BaseService):
         """
         Schedule a new meeting owned by the current user. attendee_ids lists the IDs of existing users to invite.
         """
+        attendee_ids = self._check_attendees(data.attendee_ids)
         meeting = models.Meeting(**data.model_dump(exclude={"attendee_ids"}), owner_id=self.user_id)
-        meeting.attendees = self._load_attendees(data.attendee_ids)
+        self.db.add(meeting)
+        self.db.flush()
+        self._set_attendees(meeting.id, attendee_ids)
         return schemas.Meeting.model_validate(self._save(meeting))
 
     @cached(reads=("users",))
@@ -52,10 +55,12 @@ class MeetingService(BaseService):
         meeting = self._get_meeting(meeting_id)
         changes = data.model_dump(exclude_unset=True)
         attendee_ids = changes.pop("attendee_ids", None)
+        if attendee_ids is not None:
+            attendee_ids = self._check_attendees(attendee_ids)
         for field, value in changes.items():
             setattr(meeting, field, value)
         if attendee_ids is not None:
-            meeting.attendees = self._load_attendees(attendee_ids)
+            self._set_attendees(meeting.id, attendee_ids)
         return schemas.Meeting.model_validate(self._save(meeting))
 
     def delete(self, meeting_id: int) -> None:
@@ -71,11 +76,11 @@ class MeetingService(BaseService):
         self.db.commit()
 
     def _accessible(self) -> Query:
+        attending = select(models.meeting_users.c.meeting_id).where(
+            models.meeting_users.c.user_id == self.user_id
+        )
         return self.db.query(models.Meeting).filter(
-            or_(
-                models.Meeting.owner_id == self.user_id,
-                models.Meeting.attendees.any(models.User.id == self.user_id),
-            )
+            or_(models.Meeting.owner_id == self.user_id, models.Meeting.id.in_(attending))
         )
 
     def _get_meeting(self, meeting_id: int) -> models.Meeting:
@@ -84,11 +89,24 @@ class MeetingService(BaseService):
             raise NotFoundError("Meeting", meeting_id)
         return meeting
 
-    def _load_attendees(self, attendee_ids: List[int]) -> List[models.User]:
-        if not attendee_ids:
-            return []
-        users = self.db.query(models.User).filter(models.User.id.in_(attendee_ids)).all()
-        missing = set(attendee_ids) - {user.id for user in users}
+    def _check_attendees(self, attendee_ids: List[int]) -> List[int]:
+        """
+        Validate attendee ids through the users service; returns them de-duplicated.
+        """
+        attendee_ids = list(dict.fromkeys(attendee_ids))
+        missing = self.mesh.users.missing_ids(attendee_ids) if attendee_ids else []
         if missing:
             raise NotFoundError("User", min(missing))
-        return users
+        return attendee_ids
+
+    def _set_attendees(self, meeting_id: int, attendee_ids: List[int]) -> None:
+        """
+        Replace a meeting's attendees by writing the meeting_users association
+        rows directly, so this service never reads the users table.
+        """
+        self.db.execute(delete(models.meeting_users).where(models.meeting_users.c.meeting_id == meeting_id))
+        if attendee_ids:
+            self.db.execute(
+                insert(models.meeting_users),
+                [{"meeting_id": meeting_id, "user_id": user_id} for user_id in attendee_ids],
+            )

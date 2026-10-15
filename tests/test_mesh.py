@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 
+import models
 import schemas
 from mesh import LocalTransport, ServiceMesh, Transport, build_local_mesh
 from services import SERVICE_CLASSES, NotFoundError
@@ -69,3 +70,29 @@ def test_unknown_service_raises(mesh):
 def test_mesh_without_transport_raises():
     with pytest.raises(RuntimeError):
         ServiceMesh(user_id=1).users.list()
+
+
+def test_attendee_check_goes_through_users_service(recording_mesh, db):
+    mesh, transport = recording_mesh
+    other = models.User(name="Bob", email="bob@example.com")
+    db.add(other)
+    db.commit()
+
+    mesh.meetings.create(
+        schemas.MeetingCreate(
+            title="Standup", scheduled_time=datetime(2024, 1, 15, 10), attendee_ids=[other.id]
+        )
+    )
+
+    assert transport.calls == [("meetings", "create"), ("users", "missing_ids")]
+
+
+def test_failed_attendee_check_leaves_nothing_in_the_session(mesh):
+    with pytest.raises(NotFoundError):
+        mesh.meetings.create(
+            schemas.MeetingCreate(title="Bad", scheduled_time=datetime(2024, 1, 15, 10), attendee_ids=[99])
+        )
+
+    mesh.meetings.create(schemas.MeetingCreate(title="Good", scheduled_time=datetime(2024, 1, 15, 10)))
+
+    assert [meeting.title for meeting in mesh.meetings.list()] == ["Good"]

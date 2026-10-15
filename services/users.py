@@ -46,6 +46,17 @@ class UserService(BaseService):
             raise NotFoundError("User", user_id)
         return schemas.User.model_validate(self._get_model(models.User, user_id))
 
+    def missing_ids(self, user_ids: List[int]) -> List[int]:
+        """
+        Return the ids in user_ids that don't belong to any user. Not limited
+        to visible users, since any existing user can be invited to a meeting.
+        """
+        existing = {
+            user_id
+            for (user_id,) in self.db.query(models.User.id).filter(models.User.id.in_(user_ids))
+        }
+        return [user_id for user_id in user_ids if user_id not in existing]
+
     def _visible_ids(self) -> Set[int]:
         visible = {self.user_id}
         for meeting in self.mesh.meetings.list():

@@ -155,3 +155,36 @@ def test_task_rejects_unknown_status(client, auth_headers, meeting):
 
     assert (created.status_code, updated.status_code, listed.status_code) == (422, 422, 422)
     assert client.get(f"/tasks/{task['id']}", headers=auth_headers).json()["status"] == "pending"
+
+
+def test_duplicate_attendee_ids_are_stored_once(client, auth_headers, user):
+    response = client.post(
+        "/meetings/",
+        json={"title": "x", "scheduled_time": "2024-01-15T10:00:00", "attendee_ids": [user["id"], user["id"]]},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    assert response.json()["attendees"] == [user]
+
+
+def test_update_meeting_replaces_attendees(client, auth_headers, user, meeting, create_user):
+    other, _ = create_user("Bob", "bob@example.com")
+
+    response = client.put(
+        f"/meetings/{meeting['id']}", json={"attendee_ids": [other["id"]]}, headers=auth_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["attendees"] == [other]
+    assert client.get(f"/meetings/{meeting['id']}", headers=auth_headers).json()["attendees"] == [other]
+
+
+def test_update_with_unknown_attendee_changes_nothing(client, auth_headers, user, meeting):
+    response = client.put(
+        f"/meetings/{meeting['id']}", json={"title": "Renamed", "attendee_ids": [99]}, headers=auth_headers
+    )
+
+    assert response.status_code == 404
+    unchanged = client.get(f"/meetings/{meeting['id']}", headers=auth_headers).json()
+    assert (unchanged["title"], unchanged["attendees"]) == (meeting["title"], [user])

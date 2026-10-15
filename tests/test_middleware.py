@@ -70,3 +70,19 @@ def test_user_id_is_passed_to_view():
 
     assert response.status_code == 200
     assert response.json() == {"user_id": 42}
+
+
+def test_openapi_declares_user_id_header_for_swagger(client):
+    schema = client.get("/openapi.json").json()
+
+    schemes = schema["components"]["securitySchemes"]
+    assert schemes == {
+        "APIKeyHeader": {
+            "type": "apiKey",
+            "in": "header",
+            "name": settings.user_id_header,
+            "description": schemes["APIKeyHeader"]["description"],
+        }
+    }
+    assert schema["paths"]["/meetings/"]["get"]["security"] == [{"APIKeyHeader": []}]
+    assert "security" not in schema["paths"]["/users/"]["post"]

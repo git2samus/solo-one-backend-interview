@@ -1,10 +1,19 @@
 from typing import Optional
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Security
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from settings import settings
+
+# Declares the header as a security scheme so Swagger UI's "Authorize" button
+# can send it; the value itself is read by UserIdMiddleware.
+user_id_scheme = APIKeyHeader(
+    name=settings.user_id_header,
+    auto_error=False,
+    description="ID of the user making the request. Create a user with POST /users/ first.",
+)
 
 
 class UserIdMiddleware(BaseHTTPMiddleware):
@@ -30,7 +39,7 @@ class UserIdMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-def get_current_user_id(request: Request) -> int:
+def get_current_user_id(request: Request, _: Optional[str] = Security(user_id_scheme)) -> int:
     """
     Dependency that returns the user id extracted by UserIdMiddleware.
     """

@@ -2,15 +2,6 @@ import pytest
 
 
 @pytest.fixture
-def user(client, auth_headers):
-    response = client.post(
-        "/users/", json={"name": "Ada", "email": "ada@example.com"}, headers=auth_headers
-    )
-    assert response.status_code == 201
-    return response.json()
-
-
-@pytest.fixture
 def meeting(client, auth_headers, user):
     response = client.post(
         "/meetings/",
@@ -41,6 +32,7 @@ def test_duplicate_user_email_returns_409(client, auth_headers, user):
 
 def test_create_and_read_meeting(client, auth_headers, user, meeting):
     assert meeting["attendees"] == [user]
+    assert meeting["owner_id"] == user["id"]
 
     details = client.get(f"/meetings/{meeting['id']}", headers=auth_headers).json()
 
@@ -134,6 +126,6 @@ def test_reassign_task_to_unknown_meeting_returns_404(client, auth_headers, meet
     assert response.status_code == 404
 
 
-@pytest.mark.parametrize("path", ["/users/1", "/meetings/1", "/notes/1", "/tasks/1"])
+@pytest.mark.parametrize("path", ["/users/999", "/meetings/999", "/notes/999", "/tasks/999"])
 def test_unknown_resource_returns_404(client, auth_headers, path):
     assert client.get(path, headers=auth_headers).status_code == 404

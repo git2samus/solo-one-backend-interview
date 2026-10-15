@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Optional
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
+import models
 from database import get_db
 from middleware import get_current_user_id
 from services import SERVICE_CLASSES, BaseService
@@ -58,9 +59,12 @@ class ServiceProxy:
 class ServiceMesh:
     """
     User-scoped entry point to all services: mesh.<service>.<method>(...).
+
+    user_id is None for an anonymous mesh, which can only be used for calls
+    that need no user (e.g. creating a user).
     """
 
-    def __init__(self, user_id: int, transport: Optional[Transport] = None):
+    def __init__(self, user_id: Optional[int], transport: Optional[Transport] = None):
         self.user_id = user_id
         self._transport = transport
 
@@ -75,7 +79,7 @@ class ServiceMesh:
         return ServiceProxy(self._transport, service)
 
 
-def build_local_mesh(db: Session, user_id: int) -> ServiceMesh:
+def build_local_mesh(db: Session, user_id: Optional[int]) -> ServiceMesh:
     """
     Build a mesh whose services run in-process against the given DB session.
     """
@@ -92,4 +96,13 @@ def get_mesh(
     """
     Dependency providing a service mesh bound to the requesting user.
     """
+    if db.get(models.User, user_id) is None:
+        raise HTTPException(status_code=401, detail=f"Unknown user {user_id}")
     return build_local_mesh(db, user_id)
+
+
+def get_anonymous_mesh(db: Session = Depends(get_db)) -> ServiceMesh:
+    """
+    Dependency providing a mesh with no user, for endpoints that don't require one.
+    """
+    return build_local_mesh(db, user_id=None)

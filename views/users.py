@@ -3,15 +3,15 @@ from typing import List
 from fastapi import APIRouter, Depends
 
 import schemas
-from mesh import ServiceMesh, get_mesh
+from mesh import ServiceMesh, get_anonymous_mesh, get_mesh
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/", response_model=schemas.User, status_code=201)
-def create_user(user: schemas.UserCreate, mesh: ServiceMesh = Depends(get_mesh)):
+def create_user(user: schemas.UserCreate, mesh: ServiceMesh = Depends(get_anonymous_mesh)):
     """
-    Create a new user.
+    Create a new user. Does not require the X-User-ID header.
     """
     return mesh.users.create(user)
 
@@ -19,7 +19,7 @@ def create_user(user: schemas.UserCreate, mesh: ServiceMesh = Depends(get_mesh))
 @router.get("/", response_model=List[schemas.User])
 def list_users(mesh: ServiceMesh = Depends(get_mesh)):
     """
-    List all users.
+    List the requesting user and everyone they share a meeting with.
     """
     return mesh.users.list()
 

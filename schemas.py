@@ -42,6 +42,7 @@ class MeetingUpdate(BaseModel):
 class Meeting(MeetingBase):
     id: int
     created_at: datetime
+    owner_id: int
     attendees: List[User] = []
     
     class Config:

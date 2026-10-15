@@ -32,6 +32,7 @@ class Meeting(Base):
     description = Column(Text)
     scheduled_time = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     
     # Relationships
     attendees = relationship('User', secondary=meeting_users, back_populates='meetings')

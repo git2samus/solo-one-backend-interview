@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -23,17 +23,23 @@ class ConflictError(ServiceError):
     pass
 
 
+class ForbiddenError(ServiceError):
+    pass
+
+
 class BaseService(ABC):
     """
     Base class for all resource services.
 
-    Services are bound to the user making the request, and must use
-    self.mesh (never another service directly) to call other services.
+    Services are bound to the user making the request (user_id is None only
+    for anonymous calls such as sign-up) and must only expose that user's
+    resources. They must use self.mesh (never another service directly) to
+    call other services.
     """
 
     name: str
 
-    def __init__(self, db: Session, user_id: int, mesh: "ServiceMesh"):
+    def __init__(self, db: Session, user_id: Optional[int], mesh: "ServiceMesh"):
         self.db = db
         self.user_id = user_id
         self.mesh = mesh

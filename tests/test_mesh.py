@@ -22,18 +22,20 @@ class RecordingTransport(Transport):
 
 
 @pytest.fixture
-def recording_mesh(db):
-    mesh = ServiceMesh(user_id=1)
-    services = {cls.name: cls(db=db, user_id=1, mesh=mesh) for cls in SERVICE_CLASSES}
+def recording_mesh(db, db_user):
+    mesh = ServiceMesh(user_id=db_user.id)
+    services = {cls.name: cls(db=db, user_id=db_user.id, mesh=mesh) for cls in SERVICE_CLASSES}
     transport = RecordingTransport(LocalTransport(services))
     mesh.connect(transport)
     return mesh, transport
 
 
 def test_mesh_routes_to_service_and_persists(mesh):
-    created = mesh.users.create(schemas.UserCreate(name="Ada", email="ada@example.com"))
+    meeting = mesh.meetings.create(
+        schemas.MeetingCreate(title="Standup", scheduled_time=datetime(2024, 1, 15, 10))
+    )
 
-    assert mesh.users.get(created.id) == created
+    assert mesh.meetings.get(meeting.id).title == "Standup"
 
 
 def test_mesh_is_bound_to_user(db):

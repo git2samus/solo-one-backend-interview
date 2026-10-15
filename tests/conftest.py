@@ -6,6 +6,7 @@ from sqlalchemy.pool import StaticPool
 
 from database import get_db
 from main import app
+import models
 from mesh import build_local_mesh
 from middleware import USER_ID_HEADER
 from models import Base
@@ -43,10 +44,43 @@ def client(session_factory):
 
 
 @pytest.fixture
-def auth_headers():
-    return {USER_ID_HEADER: "1"}
+def create_user(client):
+    """
+    Factory creating a user through the API; returns (user, auth headers).
+    """
+
+    def create(name, email):
+        response = client.post("/users/", json={"name": name, "email": email})
+        assert response.status_code == 201
+        user = response.json()
+        return user, {USER_ID_HEADER: str(user["id"])}
+
+    return create
 
 
 @pytest.fixture
-def mesh(db):
-    return build_local_mesh(db, user_id=1)
+def user_and_headers(create_user):
+    return create_user("Ada", "ada@example.com")
+
+
+@pytest.fixture
+def user(user_and_headers):
+    return user_and_headers[0]
+
+
+@pytest.fixture
+def auth_headers(user_and_headers):
+    return user_and_headers[1]
+
+
+@pytest.fixture
+def db_user(db):
+    user = models.User(name="Ada", email="ada@example.com")
+    db.add(user)
+    db.commit()
+    return user
+
+
+@pytest.fixture
+def mesh(db, db_user):
+    return build_local_mesh(db, user_id=db_user.id)

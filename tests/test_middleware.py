@@ -40,10 +40,21 @@ def test_non_integer_header_returns_400(client, value):
 
 
 @pytest.mark.parametrize("path", ["/users/", "/meetings/", "/notes/", "/tasks/"])
-def test_valid_header_is_accepted(client, path):
-    response = client.get(path, headers={USER_ID_HEADER: "7"})
+def test_valid_header_is_accepted(client, auth_headers, path):
+    assert client.get(path, headers=auth_headers).status_code == 200
 
-    assert response.status_code == 200
+
+def test_unknown_user_returns_401(client):
+    response = client.get("/meetings/", headers={USER_ID_HEADER: "999"})
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unknown user 999"}
+
+
+def test_create_user_does_not_require_header(client):
+    response = client.post("/users/", json={"name": "Ada", "email": "ada@example.com"})
+
+    assert response.status_code == 201
 
 
 def test_user_id_is_passed_to_view():

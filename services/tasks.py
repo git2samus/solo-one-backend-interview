@@ -24,7 +24,7 @@ class TaskService(BaseService):
         return schemas.Task.model_validate(task)
 
     @cached
-    def list(self, meeting_id: Optional[int] = None, status: Optional[str] = None) -> List[schemas.Task]:
+    def list(self, meeting_id: Optional[int] = None, status: Optional[schemas.TaskStatus] = None) -> List[schemas.Task]:
         """
         List tasks due at meetings the current user owns or attends, optionally filtered by meeting and/or status.
         """

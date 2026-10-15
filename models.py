@@ -1,8 +1,15 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table
 from sqlalchemy.orm import declarative_base, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 Base = declarative_base()
+
+
+def utcnow() -> datetime:
+    """
+    Current UTC time as a naive datetime, the form SQLite DateTime columns store.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # Association table for many-to-many relationship between meetings and users
 meeting_users = Table(
@@ -31,7 +38,7 @@ class Meeting(Base):
     title = Column(String, nullable=False)
     description = Column(Text)
     scheduled_time = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     
     # Relationships
@@ -45,7 +52,7 @@ class Note(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     meeting_id = Column(Integer, ForeignKey('meetings.id'), nullable=False)
     
     # Relationships
@@ -59,7 +66,7 @@ class Task(Base):
     title = Column(String, nullable=False)
     description = Column(Text)
     status = Column(String, default='pending')  # pending, completed, cancelled
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     due_meeting_id = Column(Integer, ForeignKey('meetings.id'), nullable=False)
     
     # Relationships

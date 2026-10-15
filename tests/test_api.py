@@ -129,3 +129,29 @@ def test_reassign_task_to_unknown_meeting_returns_404(client, auth_headers, meet
 @pytest.mark.parametrize("path", ["/users/999", "/meetings/999", "/notes/999", "/tasks/999"])
 def test_unknown_resource_returns_404(client, auth_headers, path):
     assert client.get(path, headers=auth_headers).status_code == 404
+
+
+@pytest.mark.parametrize("status", ["pending", "completed", "cancelled"])
+def test_task_accepts_known_statuses(client, auth_headers, meeting, status):
+    response = client.post(
+        "/tasks/",
+        json={"title": "t", "due_meeting_id": meeting["id"], "status": status},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == status
+
+
+def test_task_rejects_unknown_status(client, auth_headers, meeting):
+    created = client.post(
+        "/tasks/", json={"title": "t", "due_meeting_id": meeting["id"], "status": "done"}, headers=auth_headers
+    )
+    task = client.post(
+        "/tasks/", json={"title": "t", "due_meeting_id": meeting["id"]}, headers=auth_headers
+    ).json()
+    updated = client.put(f"/tasks/{task['id']}", json={"status": "done"}, headers=auth_headers)
+    listed = client.get("/tasks/?status=done", headers=auth_headers)
+
+    assert (created.status_code, updated.status_code, listed.status_code) == (422, 422, 422)
+    assert client.get(f"/tasks/{task['id']}", headers=auth_headers).json()["status"] == "pending"

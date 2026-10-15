@@ -19,7 +19,7 @@ def create_task(task: schemas.TaskCreate, mesh: ServiceMesh = Depends(get_mesh))
 @router.get("/", response_model=List[schemas.Task])
 def list_tasks(
     meeting_id: Optional[int] = Query(None),
-    status: Optional[str] = Query(None),
+    status: Optional[schemas.TaskStatus] = Query(None),
     mesh: ServiceMesh = Depends(get_mesh),
 ):
     """

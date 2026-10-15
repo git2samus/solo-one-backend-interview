@@ -146,3 +146,17 @@ def test_undecorated_services_have_no_tools():
             """Get a thing."""
 
     assert collect_tools([Service]) == {}
+
+
+def test_task_status_values_are_listed_in_tool_schema(mesh):
+    tools = {tool["name"]: tool for tool in mesh.get_tools()}
+    status = tools["tasks_create"]["input_schema"]["properties"]["status"]
+
+    assert status["enum"] == ["pending", "completed", "cancelled"]
+
+
+def test_call_tool_rejects_unknown_task_status(mesh):
+    meeting = create_meeting(mesh)
+
+    with pytest.raises(ValidationError):
+        mesh.call_tool("tasks_create", {"title": "t", "due_meeting_id": meeting["id"], "status": "done"})

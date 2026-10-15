@@ -1,7 +1,7 @@
 from __future__ import annotations
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 
 # User schemas
@@ -17,8 +17,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Meeting schemas
@@ -45,8 +44,7 @@ class Meeting(MeetingBase):
     owner_id: int
     attendees: List[User] = []
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Note schemas
@@ -63,15 +61,17 @@ class Note(NoteBase):
     meeting_id: int
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Task schemas
+TaskStatus = Literal['pending', 'completed', 'cancelled']
+
+
 class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
-    status: str = 'pending'
+    status: TaskStatus = 'pending'
 
 
 class TaskCreate(TaskBase):
@@ -81,7 +81,7 @@ class TaskCreate(TaskBase):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[TaskStatus] = None
     due_meeting_id: Optional[int] = None
 
 
@@ -90,8 +90,7 @@ class Task(TaskBase):
     due_meeting_id: int
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # MeetingWithDetails must be defined after Note and Task
@@ -99,6 +98,5 @@ class MeetingWithDetails(Meeting):
     notes: List[Note] = []
     tasks: List[Task] = []
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 

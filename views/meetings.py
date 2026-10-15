@@ -1,11 +1,14 @@
 from datetime import datetime
 from typing import List
 
+from fastapi import APIRouter
+
 import schemas
-from main import app
+
+router = APIRouter()
 
 
-@app.post("/meetings/", response_model=schemas.Meeting, status_code=201)
+@router.post("/meetings/", response_model=schemas.Meeting, status_code=201)
 async def create_meeting(meeting: schemas.MeetingCreate):
     """
     Create a new meeting with attendees.
@@ -21,7 +24,7 @@ async def create_meeting(meeting: schemas.MeetingCreate):
     )
 
 
-@app.get("/meetings/", response_model=List[schemas.Meeting])
+@router.get("/meetings/", response_model=List[schemas.Meeting])
 async def list_meetings():
     """
     List all meetings.
@@ -30,7 +33,7 @@ async def list_meetings():
     return []
 
 
-@app.get("/meetings/{meeting_id}", response_model=schemas.MeetingWithDetails)
+@router.get("/meetings/{meeting_id}", response_model=schemas.MeetingWithDetails)
 async def get_meeting(meeting_id: int):
     """
     Get a specific meeting with all details (attendees, notes, tasks).
@@ -48,7 +51,7 @@ async def get_meeting(meeting_id: int):
     )
 
 
-@app.put("/meetings/{meeting_id}", response_model=schemas.Meeting)
+@router.put("/meetings/{meeting_id}", response_model=schemas.Meeting)
 async def update_meeting(meeting_id: int, meeting: schemas.MeetingUpdate):
     """
     Update a meeting.
@@ -64,7 +67,7 @@ async def update_meeting(meeting_id: int, meeting: schemas.MeetingUpdate):
     )
 
 
-@app.delete("/meetings/{meeting_id}", status_code=204)
+@router.delete("/meetings/{meeting_id}", status_code=204)
 async def delete_meeting(meeting_id: int):
     """
     Delete a meeting.

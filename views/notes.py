@@ -1,13 +1,14 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import Query
+from fastapi import APIRouter, Query
 
 import schemas
-from main import app
+
+router = APIRouter()
 
 
-@app.post("/notes/", response_model=schemas.Note, status_code=201)
+@router.post("/notes/", response_model=schemas.Note, status_code=201)
 async def create_note(note: schemas.NoteCreate):
     """
     Create a new note for a meeting.
@@ -21,7 +22,7 @@ async def create_note(note: schemas.NoteCreate):
     )
 
 
-@app.get("/notes/", response_model=List[schemas.Note])
+@router.get("/notes/", response_model=List[schemas.Note])
 async def list_notes(meeting_id: Optional[int] = Query(None)):
     """
     List all notes, optionally filtered by meeting_id.
@@ -30,7 +31,7 @@ async def list_notes(meeting_id: Optional[int] = Query(None)):
     return []
 
 
-@app.get("/notes/{note_id}", response_model=schemas.Note)
+@router.get("/notes/{note_id}", response_model=schemas.Note)
 async def get_note(note_id: int):
     """
     Get a specific note by ID.

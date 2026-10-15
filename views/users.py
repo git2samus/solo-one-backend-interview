@@ -1,10 +1,13 @@
 from typing import List
 
+from fastapi import APIRouter
+
 import schemas
-from main import app
+
+router = APIRouter()
 
 
-@app.post("/users/", response_model=schemas.User, status_code=201)
+@router.post("/users/", response_model=schemas.User, status_code=201)
 async def create_user(user: schemas.UserCreate):
     """
     Create a new user.
@@ -13,7 +16,7 @@ async def create_user(user: schemas.UserCreate):
     return schemas.User(id=1, name=user.name, email=user.email)
 
 
-@app.get("/users/", response_model=List[schemas.User])
+@router.get("/users/", response_model=List[schemas.User])
 async def list_users():
     """
     List all users.
@@ -22,7 +25,7 @@ async def list_users():
     return []
 
 
-@app.get("/users/{user_id}", response_model=schemas.User)
+@router.get("/users/{user_id}", response_model=schemas.User)
 async def get_user(user_id: int):
     """
     Get a specific user by ID.
